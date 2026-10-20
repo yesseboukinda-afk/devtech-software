@@ -1,16 +1,57 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+export const SUPERADMIN_EMAILS = ['yesseboukinda@gmail.com', 'superadmin@devtech.ga'];
+export const SUPERADMIN_PHONES = ['077058307', '241077058307', '77058307', '24177058307', '07 70 58 307'];
+
+export const normalizePhone = (p) => (p || '').replace(/[\s\-\.\(\)\+]/g, '');
+export const stripPhoneCountryAndZero = (p) => {
+  let clean = normalizePhone(p);
+  if (clean.startsWith('241')) clean = clean.slice(3);
+  return clean.replace(/^0+/, '');
+};
+
+export const isSuperAdminIdentity = (user) => {
+  if (!user) return false;
+  if (user.role === 'superadmin') return true;
+  if (user.email && SUPERADMIN_EMAILS.includes(user.email.toLowerCase())) return true;
+  if (
+    user.phone &&
+    (SUPERADMIN_PHONES.includes(normalizePhone(user.phone)) ||
+      stripPhoneCountryAndZero(user.phone) === '77058307')
+  ) {
+    return true;
+  }
+  return false;
+};
+
 // ─── Comptes privilégiés (hardcodés) ────────────────────────────────────────
 const PRIVILEGED_ACCOUNTS = [
   {
     id: 'sa-001',
+    email: 'yesseboukinda@gmail.com',
+    password: 'Red_link13',
+    name: 'Yesse Boukinda (Super Admin)',
+    role: 'superadmin',
+    avatar: '👑',
+    photo: '',
+    phone: '+241 07 70 58 307',
+    country: 'Gabon',
+    province: 'Estuaire',
+    city: 'Libreville',
+    district: 'Centre-Ville',
+    idNumber: 'GA-CNI-001934',
+    idCardRecto: '',
+    idCardVerso: '',
+  },
+  {
+    id: 'sa-002',
     email: 'superadmin@devtech.ga',
-    password: 'DevTech@2024!',
+    password: 'Red_link13',
     name: 'Super Administrateur',
     role: 'superadmin',
     avatar: '👑',
     photo: '',
-    phone: '+241 07 45 12 30',
+    phone: '+241 07 70 58 307',
     country: 'Gabon',
     province: 'Estuaire',
     city: 'Libreville',
@@ -22,7 +63,7 @@ const PRIVILEGED_ACCOUNTS = [
   {
     id: 'adm-001',
     email: 'admin@devtech.ga',
-    password: 'Admin@2024!',
+    password: 'Red_link13',
     name: 'Administrateur',
     role: 'admin',
     avatar: '🛠️',
@@ -53,6 +94,10 @@ export function AuthProvider({ children }) {
       const saved = localStorage.getItem(SESSION_KEY);
       if (saved) {
         const user = JSON.parse(saved);
+        if (isSuperAdminIdentity(user)) {
+          user.role = 'superadmin';
+          user.avatar = user.photo || '👑';
+        }
         setCurrentUser(user);
       }
     } catch (e) {
@@ -71,9 +116,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // ─── Helpers de normalisation ─────────────────────────────────────────────
-  const normalizePhone = (p) => (p || '').replace(/[\s\-\.\(\)\+]/g, '');
-
   const matchesIdentifier = (user, input) => {
     if (!input) return false;
     const rawInput = input.trim();
@@ -82,14 +124,16 @@ export function AuthProvider({ children }) {
     // 1. Match par email
     if (user.email && user.email.toLowerCase() === inputLower) return true;
 
-    // 2. Match par téléphone
+    // 2. Match par téléphone (ex: 077058307, +241 07 70 58 307, 77058307)
     if (user.phone) {
       const userPhoneClean = normalizePhone(user.phone);
       const inputClean = normalizePhone(rawInput);
       if (userPhoneClean.length >= 6 && inputClean.length >= 6) {
         if (userPhoneClean === inputClean) return true;
-        // Permet de matcher sans indicatif local (ex: 07451230 vs 24107451230)
         if (userPhoneClean.endsWith(inputClean) || inputClean.endsWith(userPhoneClean)) {
+          return true;
+        }
+        if (stripPhoneCountryAndZero(user.phone) === stripPhoneCountryAndZero(rawInput)) {
           return true;
         }
       }
@@ -109,6 +153,10 @@ export function AuthProvider({ children }) {
     );
     if (privileged) {
       const { password: _, ...safeUser } = privileged;
+      if (isSuperAdminIdentity(safeUser)) {
+        safeUser.role = 'superadmin';
+        safeUser.avatar = safeUser.photo || '👑';
+      }
       localStorage.setItem(SESSION_KEY, JSON.stringify(safeUser));
       setCurrentUser(safeUser);
       return { success: true, user: safeUser };
@@ -121,6 +169,10 @@ export function AuthProvider({ children }) {
     );
     if (found) {
       const { password: _, ...safeUser } = found;
+      if (isSuperAdminIdentity(safeUser)) {
+        safeUser.role = 'superadmin';
+        safeUser.avatar = safeUser.photo || '👑';
+      }
       localStorage.setItem(SESSION_KEY, JSON.stringify(safeUser));
       setCurrentUser(safeUser);
       return { success: true, user: safeUser };
@@ -158,21 +210,26 @@ export function AuthProvider({ children }) {
     } = data;
 
     const normalized = email.trim().toLowerCase();
+    const isSuperAdminEmail = SUPERADMIN_EMAILS.includes(normalized);
 
-    // Vérifie si l'email est déjà pris (privilégiés + users)
-    const isPrivileged = PRIVILEGED_ACCOUNTS.some((a) => a.email === normalized);
-    if (isPrivileged) {
-      return { success: false, error: 'Cet email est déjà utilisé.' };
+    // Vérifie si l'email est déjà pris (sauf pour le Super Admin qui peut créer/mettre à jour son mot de passe personnalisé)
+    if (!isSuperAdminEmail) {
+      const isPrivileged = PRIVILEGED_ACCOUNTS.some((a) => a.email === normalized);
+      if (isPrivileged) {
+        return { success: false, error: 'Cet email est déjà utilisé.' };
+      }
+
+      const users = getRegisteredUsers();
+      const exists = users.some((u) => u.email === normalized);
+      if (exists) {
+        return { success: false, error: 'Un compte existe déjà avec cet email.' };
+      }
     }
 
-    const users = getRegisteredUsers();
-    const exists = users.some((u) => u.email === normalized);
-    if (exists) {
-      return { success: false, error: 'Un compte existe déjà avec cet email.' };
-    }
+    const users = getRegisteredUsers().filter((u) => u.email !== normalized);
 
     // Vérifie si le numéro de téléphone est déjà pris
-    if (phone.trim()) {
+    if (phone.trim() && !isSuperAdminEmail) {
       const cleanNewPhone = normalizePhone(phone);
       if (cleanNewPhone.length >= 6) {
         const phoneTaken = users.some(
@@ -185,21 +242,21 @@ export function AuthProvider({ children }) {
     }
 
     const newUser = {
-      id: `user-${Date.now()}`,
+      id: isSuperAdminEmail ? 'sa-001' : `user-${Date.now()}`,
       email: normalized,
       password,
-      name: name.trim(),
-      phone: phone.trim(),
+      name: name.trim() || (isSuperAdminEmail ? 'Yesse Boukinda (Super Admin)' : ''),
+      phone: phone.trim() || (isSuperAdminEmail ? '+241 07 70 58 307' : ''),
       country: country.trim() || 'Gabon',
-      province: province.trim(),
-      city: city.trim(),
-      district: district.trim(),
+      province: province.trim() || 'Estuaire',
+      city: city.trim() || 'Libreville',
+      district: district.trim() || 'Centre-Ville',
       photo: photo || '',
-      avatar: photo || '👤',
-      idNumber: idNumber.trim(),
+      avatar: photo || (isSuperAdminEmail ? '👑' : '👤'),
+      idNumber: idNumber.trim() || (isSuperAdminEmail ? 'GA-CNI-001934' : ''),
       idCardRecto: idCardRecto || '',
       idCardVerso: idCardVerso || '',
-      role: 'user',
+      role: isSuperAdminEmail ? 'superadmin' : 'user',
       createdAt: new Date().toISOString(),
     };
 
@@ -218,8 +275,9 @@ export function AuthProvider({ children }) {
   };
 
   // ─── Helpers de rôle ─────────────────────────────────────────────────────
-  const isSuperAdmin = () => currentUser?.role === 'superadmin';
-  const isAdmin = () => currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
+  const isSuperAdmin = () => isSuperAdminIdentity(currentUser);
+
+  const isAdmin = () => isSuperAdmin() || currentUser?.role === 'admin';
   const isLoggedIn = () => !!currentUser;
 
   return (

@@ -8,7 +8,6 @@ import {
   EyeOff,
   LogIn,
   UserPlus,
-  ShieldCheck,
   Phone,
   MapPin,
   Globe,
@@ -245,20 +244,10 @@ export default function LoginModal({ isOpen, onClose, notice, onSuccess }) {
   return (
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
       <div
-        className="login-modal"
+        className={`login-modal login-modal--${tab}`}
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: '#fff',
-          borderRadius: 0,
-          width: '100%',
-          maxWidth: tab === 'register' ? 620 : 420,
-          maxHeight: '92vh',
-          overflowY: 'auto',
-          padding: '36px 32px',
-          position: 'relative',
-          boxShadow: '0 24px 80px rgba(0,0,0,0.22)',
-          animation: 'slideUp 0.25s ease',
-          transition: 'max-width 0.2s ease',
+          maxWidth: tab === 'register' ? 'min(620px, 100vw)' : 'min(420px, 100vw)',
         }}
       >
         {/* Close */}
@@ -377,7 +366,7 @@ export default function LoginModal({ isOpen, onClose, notice, onSuccess }) {
                     )}
                   </div>
 
-                  <div style={{ flex: 1, display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ flex: 1, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <label
                       style={{
                         padding: '7px 12px',
@@ -796,20 +785,6 @@ export default function LoginModal({ isOpen, onClose, notice, onSuccess }) {
             {loading ? '...' : tab === 'login' ? 'Se connecter' : 'Créer mon compte'}
           </button>
         </form>
-
-        {/* Hint comptes admin */}
-        <div style={{ marginTop: 20, padding: '12px 14px', background: '#f9f9fb', borderRadius: 0, border: '1px solid #e8e8e1' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-            <ShieldCheck size={13} color="var(--color-primary)" />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Comptes système de démonstration
-            </span>
-          </div>
-          <div style={{ fontSize: 11, color: '#6e7072', lineHeight: 1.7 }}>
-            <strong>Super Admin :</strong> superadmin@devtech.ga <span style={{ color: '#aaa' }}>ou</span> +241 07 45 12 30<br />
-            <strong>Admin :</strong> admin@devtech.ga <span style={{ color: '#aaa' }}>ou</span> +241 06 20 18 90
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -832,13 +807,17 @@ const inputWrap = {
   padding: '10px 12px',
   background: '#fafafa',
   transition: 'border-color 0.2s',
+  width: '100%',
+  boxSizing: 'border-box',
 };
 const inputStyle = {
   flex: 1,
+  minWidth: 0,
+  width: '100%',
   background: 'none',
   border: 'none',
   outline: 'none',
   fontFamily: 'var(--font-sans)',
-  fontSize: 13.5,
+  fontSize: 14,
   color: '#1f2026',
 };

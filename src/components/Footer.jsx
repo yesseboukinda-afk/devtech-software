@@ -48,7 +48,7 @@ export default function Footer({ onBackToTop }) {
               <li><a href="#contact">Contactez un Conseiller Technique</a></li>
               <li><a href="#expedition">Tarifs & Délais d'Expédition</a></li>
               <li><a href="#garantie">Politique de Garantie 2 Ans</a></li>
-              <li><a href="#retours">Retours & Échanges sous 30 Jours</a></li>
+              <li><a href="#retours">Retours & Échanges sous 5 Jours</a></li>
               <li><a href="#faq">Foire Aux Questions (FAQ)</a></li>
             </ul>
           </div>

@@ -16,7 +16,7 @@ export default function CheckoutModal({
   const [address, setAddress] = useState(
     currentUser?.district
       ? `Quartier ${currentUser.district}, ${currentUser.city || ''} (${currentUser.province || ''})`
-      : 'Quartier Glass, Libreville'
+      : ''
   );
   const [paymentMethod, setPaymentMethod] = useState('airtel');
   const [createdOrder, setCreatedOrder] = useState(null);
@@ -135,6 +135,7 @@ export default function CheckoutModal({
                           required
                           value={address}
                           onChange={(e) => setAddress(e.target.value)}
+                          placeholder="Votre adresse ou quartier de livraison"
                           style={{ width: '100%', padding: '10px 12px', border: '1px solid #e8e8e1', outline: 'none', fontSize: 13 }}
                         />
                       </div>

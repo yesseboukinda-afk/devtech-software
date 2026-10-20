@@ -14,40 +14,44 @@ import EditProductModal from './components/EditProductModal';
 import { useAuth } from './context/AuthContext';
 
 import { PRODUCTS } from './data/products';
+import { getProducts, upsertProduct, insertOrder, getOrders } from './services/supabaseService';
+import { isSupabaseConfigured } from './lib/supabase';
 
 export default function App() {
-  // ── Products state (éditable par le super admin) ─────────────────────────
+  // ── Products state (éditable par le super admin & synchronisé Supabase) ────
   const [products, setProducts] = useState(PRODUCTS);
 
-  const [cartItems, setCartItems] = useState([
-    { ...PRODUCTS[0], quantity: 1 }, // Station de soudage by default
-  ]);
-  const [wishlist, setWishlist] = useState([PRODUCTS[6]]); // Microscope in wishlist
-  const [orders, setOrders] = useState([
-    {
-      orderId: "DT-1934-88421",
-      date: "19 octobre 2026",
-      customerName: "Yesse Technicien",
-      customerPhone: "+241 07 45 12 30",
-      address: "Quartier Glass, Libreville",
-      paymentMethod: "airtel",
-      items: [
-        { ...PRODUCTS[1], quantity: 1 },
-        { ...PRODUCTS[8], quantity: 1 },
-      ],
-      subtotal: 17500,
-      shippingFee: 0,
-      total: 17500,
-      status: "Expédié par les ateliers DevTech",
-    },
-  ]);
+  useEffect(() => {
+    let isMounted = true;
+    getProducts().then((data) => {
+      if (isMounted && data && data.length > 0) {
+        setProducts(data);
+      }
+    });
+
+    if (isSupabaseConfigured()) {
+      getOrders().then((dbOrders) => {
+        if (isMounted && dbOrders && dbOrders.length > 0) {
+          setOrders(dbOrders);
+        }
+      });
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const [cartItems, setCartItems] = useState([]);
+  const [wishlist, setWishlist] = useState([]);
+  const [orders, setOrders] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Toutes nos catégories');
   const [sortBy, setSortBy] = useState('featured');
   const [dealsOnly, setDealsOnly] = useState(false);
 
-  const { currentUser, isLoggedIn } = useAuth();
+  const { currentUser, isLoggedIn, isSuperAdmin } = useAuth();
   const [loginNotice, setLoginNotice] = useState('');
   const [postLoginAction, setPostLoginAction] = useState(null); // 'cart' | 'checkout'
 
@@ -185,18 +189,39 @@ export default function App() {
     });
   };
 
-  const handleOrderSuccess = (newOrder) => {
+  const handleOrderSuccess = async (newOrder) => {
     setOrders((prev) => [newOrder, ...prev]);
     setCartItems([]);
+    try {
+      await insertOrder(newOrder);
+    } catch (e) {
+      console.error('Erreur sauvegarde commande Supabase:', e);
+    }
   };
 
   // Handler de sauvegarde produit (super admin)
-  const handleSaveProduct = (updatedProduct) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
-    );
-    setToast({ title: '✅ Produit mis à jour', message: updatedProduct.title });
+  const handleSaveProduct = async (productData) => {
+    let finalProduct = { ...productData };
+    const isNew = !finalProduct.id || finalProduct.isNew;
+    if (isNew) {
+      delete finalProduct.isNew;
+      finalProduct.id = Date.now();
+      setProducts((prev) => [finalProduct, ...prev]);
+    } else {
+      setProducts((prev) =>
+        prev.map((p) => (p.id === finalProduct.id ? finalProduct : p))
+      );
+    }
+    setToast({
+      title: isNew ? '✅ Nouveau produit créé' : '✅ Produit mis à jour',
+      message: finalProduct.title,
+    });
     setEditingProduct(null);
+    try {
+      await upsertProduct(finalProduct);
+    } catch (e) {
+      console.error('Erreur sauvegarde Supabase:', e);
+    }
   };
 
   // Filtered Products
@@ -320,6 +345,30 @@ export default function App() {
           </div>
 
           <div className="cc-filter-meta">
+            {isSuperAdmin() && (
+              <button
+                className="cc-pill"
+                style={{
+                  backgroundColor: '#007185',
+                  color: '#fff',
+                  borderColor: '#007185',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+                onClick={() =>
+                  setEditingProduct({
+                    isNew: true,
+                    category: 'Outillage & Soudure',
+                    price: '',
+                    stock: 10,
+                    features: [],
+                  })
+                }
+              >
+                + Nouveau Produit
+              </button>
+            )}
+
             <span style={{ color: '#6e7072', fontSize: 13 }}>
               <strong>{filteredProducts.length}</strong> modèles disponibles
             </span>
@@ -339,7 +388,36 @@ export default function App() {
 
         {/* Products Grid */}
         <div className="cc-product-grid-container">
-          {filteredProducts.length === 0 ? (
+          {products.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '70px 20px', border: '1px dashed #d1d5db', backgroundColor: '#fafafa', borderRadius: 4 }}>
+              <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 22, color: '#1f2026', marginBottom: 10 }}>
+                Base de données vierge & prête
+              </h3>
+              <p style={{ fontSize: 13, color: '#6e7072', maxWidth: 480, margin: '0 auto 20px auto', lineHeight: 1.6 }}>
+                Aucune donnée fictive n'est chargée. Vous pouvez commencer à saisir vos propres articles réels dès maintenant.
+              </p>
+              {isSuperAdmin() ? (
+                <button
+                  className="cc-btn cc-btn-primary"
+                  onClick={() =>
+                    setEditingProduct({
+                      isNew: true,
+                      category: 'Outillage & Soudure',
+                      price: '',
+                      stock: 10,
+                      features: [],
+                    })
+                  }
+                >
+                  + Ajouter un premier produit
+                </button>
+              ) : (
+                <p style={{ fontSize: 12, color: '#888' }}>
+                  Connectez-vous en Super Administrateur pour ajouter vos premiers produits.
+                </p>
+              )}
+            </div>
+          ) : filteredProducts.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '80px 20px', border: '1px solid #e8e8e1', backgroundColor: '#f9f9fb' }}>
               <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 22, color: '#1f2026', marginBottom: 10 }}>
                 Aucune référence ne correspond à votre recherche

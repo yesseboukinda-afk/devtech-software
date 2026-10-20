@@ -129,10 +129,10 @@ export default function EditProductModal({ product, isOpen, onClose, onSave }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <div>
             <div style={{ fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--color-primary)', fontWeight: 700, marginBottom: 2 }}>
-              ✏️ Édition Super Admin
+              ✏️ {form.isNew || !form.id ? 'Nouveau Produit' : 'Édition Super Admin'}
             </div>
             <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 20, color: '#1f2026', margin: 0 }}>
-              Modifier le Produit #{form.id}
+              {form.isNew || !form.id ? 'Ajouter un Nouveau Produit' : `Modifier le Produit #${form.id}`}
             </h2>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888' }}>
@@ -196,7 +196,7 @@ export default function EditProductModal({ product, isOpen, onClose, onSave }) {
                 value={newImageUrl}
                 onChange={(e) => setNewImageUrl(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddImageByUrl())}
-                placeholder="Ajouter l'URL d'une photo (/img/... ou http...)"
+                placeholder="Ajouter l'URL d'une photo (https://...)"
                 style={{ ...inputStyle, flex: 1 }}
               />
               <button
