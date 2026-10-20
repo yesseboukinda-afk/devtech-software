@@ -2,6 +2,21 @@ import React, { useState } from 'react';
 import { Heart, Check, Pencil, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
+// ── Badge de disponibilité selon le stock ────────────────────────────────────
+// = 1       → "Pièce Unique"  (or/doré)
+// 2 – 100   → "Stock Limité"  (orange)
+// ≥ 200     → "En Stock"      (vert)
+// 101-199   → pas de badge
+function getStockBadge(stock) {
+  if (stock === undefined || stock === null) return null;
+  const qty = Number(stock);
+  if (Number.isNaN(qty))  return null;
+  if (qty === 1)          return { label: 'Pièce Unique', cls: 'cc-badge-stock--unique' };
+  if (qty <= 100)         return { label: 'Stock Limité', cls: 'cc-badge-stock--low' };
+  if (qty >= 200)         return { label: 'En Stock',     cls: 'cc-badge-stock--ok' };
+  return null;
+}
+
 export default function ProductCard({
   product,
   onSelectProduct,
@@ -20,11 +35,14 @@ export default function ProductCard({
     setTimeout(() => setIsJustAdded(false), 1600);
   };
 
+  const stockBadge = getStockBadge(product.stock);
+
   return (
     <div className="cc-card">
       {/* Product Image Frame */}
       <div className="cc-card-image-wrap" onClick={() => onSelectProduct(product)}>
-        {/* Badges */}
+
+        {/* ── Badges haut-gauche : Solde / Pépite Atelier ── */}
         {product.deal && (
           <span className="cc-badge-sale">
             Solde -{product.dealDiscount}%
@@ -33,6 +51,13 @@ export default function ProductCard({
         {!product.deal && product.bestSeller && (
           <span className="cc-badge-heritage">
             Pépite Atelier
+          </span>
+        )}
+
+        {/* ── Badge stock bas-gauche ── */}
+        {stockBadge && (
+          <span className={`cc-badge-stock ${stockBadge.cls}`}>
+            {stockBadge.label}
           </span>
         )}
 
@@ -69,7 +94,7 @@ export default function ProductCard({
         </button>
       </div>
 
-      {/* Product Meta: Uniquement le Nom du Produit et le Bouton Ajouter au Panier */}
+      {/* Product Meta */}
       <div className="cc-card-info">
         <h3
           className="cc-card-title"

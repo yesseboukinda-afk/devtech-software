@@ -591,6 +591,45 @@ button, input, select, textarea {
   z-index: 2;
 }
 
+/* ── Badges de disponibilité (stock) ── */
+.cc-badge-stock {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  backdrop-filter: blur(4px);
+}
+
+/* Pièce Unique — doré/or */
+.cc-badge-stock--unique {
+  background: rgba(180, 140, 50, 0.92);
+  color: #fff8e8;
+  border: 1px solid rgba(220, 175, 80, 0.6);
+}
+
+/* Stock Limité — orange */
+.cc-badge-stock--low {
+  background: rgba(194, 90, 20, 0.92);
+  color: #fff4ee;
+  border: 1px solid rgba(230, 120, 50, 0.6);
+}
+
+/* En Stock — vert */
+.cc-badge-stock--ok {
+  background: rgba(16, 132, 116, 0.92);
+  color: #e8fdf8;
+  border: 1px solid rgba(20, 160, 140, 0.6);
+}
+
+
 .cc-card-wishlist {
   position: absolute;
   top: 14px;
