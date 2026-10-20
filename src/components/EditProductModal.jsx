@@ -4,7 +4,6 @@ import { X, Save, Trash2, Plus, Image, Tag, Package, Star, AlertCircle, Camera, 
 export default function EditProductModal({ product, isOpen, onClose, onSave }) {
   const [form, setForm] = useState(product ? { ...product } : {});
   const [featureInput, setFeatureInput] = useState('');
-  const [newImageUrl, setNewImageUrl] = useState('');
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
 
@@ -17,7 +16,6 @@ export default function EditProductModal({ product, isOpen, onClose, onSave }) {
       setForm({ ...product, images: imagesList });
       setError('');
       setSaved(false);
-      setNewImageUrl('');
     }
   }, [product]);
 
@@ -38,34 +36,35 @@ export default function EditProductModal({ product, isOpen, onClose, onSave }) {
     setForm((prev) => ({ ...prev, features: prev.features.filter((_, i) => i !== idx) }));
   };
 
-  // ── Gestion de la galerie multi-photos ──────────────────────────────────
-  const handleAddImageByUrl = () => {
-    if (!newImageUrl.trim()) return;
-    const currentImages = form.images || (form.image ? [form.image] : []);
-    const updated = [...currentImages, newImageUrl.trim()];
-    setForm((prev) => ({
-      ...prev,
-      images: updated,
-      image: prev.image || updated[0],
-    }));
-    setNewImageUrl('');
-  };
+  // ── Upload multi-photos ──────────────────────────────────────────────────
+  const handleUploadImageFiles = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
-  const handleUploadImageFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target.result;
-      const currentImages = form.images || (form.image ? [form.image] : []);
-      const updated = [...currentImages, dataUrl];
-      setForm((prev) => ({
-        ...prev,
-        images: updated,
-        image: prev.image || updated[0],
-      }));
-    };
-    reader.readAsDataURL(file);
+    const currentImages = form.images || (form.image ? [form.image] : []);
+    let pending = files.length;
+    const newUrls = [];
+
+    files.forEach((file, i) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        newUrls[i] = event.target.result;
+        pending--;
+        if (pending === 0) {
+          // Toutes les images chargées — on met à jour le form
+          const updated = [...currentImages, ...newUrls];
+          setForm((prev) => ({
+            ...prev,
+            images: updated,
+            image: prev.image || updated[0],
+          }));
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Reset l'input pour permettre de resélectionner les mêmes fichiers
+    e.target.value = '';
   };
 
   const handleRemoveImage = (index) => {
@@ -189,92 +188,76 @@ export default function EditProductModal({ product, isOpen, onClose, onSave }) {
             </Field>
           </div>
 
-          {/* ── Galerie Multi-Photos de l'article ── */}
-          <Field label="Galerie Photos du Produit (Multi-photos)" icon={<Image size={14} />}>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          {/* ── Galerie Multi-Photos ── */}
+          <Field label="Galerie Photos du Produit" icon={<Image size={14} />}>
+            {/* Zone de drop / bouton import */}
+            <label style={uploadZoneStyle}>
+              <Camera size={22} color="#64748b" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>
+                Importer des photos
+              </span>
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                Sélectionnez une ou plusieurs images (PNG, JPG, WEBP…)
+              </span>
               <input
-                value={newImageUrl}
-                onChange={(e) => setNewImageUrl(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddImageByUrl())}
-                placeholder="Ajouter l'URL d'une photo (https://...)"
-                style={{ ...inputStyle, flex: 1 }}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleUploadImageFiles}
+                style={{ display: 'none' }}
               />
-              <button
-                type="button"
-                onClick={handleAddImageByUrl}
-                style={{ padding: '8px 14px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
-              >
-                <Plus size={14} />
-              </button>
-              <label
-                style={{
-                  padding: '8px 14px',
-                  background: '#f1f5f9',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: 0,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: '#334155',
-                }}
-              >
-                <Camera size={14} />
-                <span>Importer</span>
-                <input type="file" accept="image/*" onChange={handleUploadImageFile} style={{ display: 'none' }} />
-              </label>
-            </div>
+            </label>
 
-            {/* Liste des photos avec aperçus */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 10 }}>
-              {(form.images || []).map((imgUrl, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    position: 'relative',
-                    border: idx === 0 ? '2px solid var(--color-primary)' : '1px solid #e2e8f0',
-                    background: '#f8fafc',
-                    padding: 4,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                  }}
-                >
-                  <img
-                    src={imgUrl}
-                    alt={`Photo ${idx + 1}`}
-                    style={{ width: '100%', height: 75, objectFit: 'contain', background: '#fff' }}
-                  />
-                  {idx === 0 && (
-                    <span style={{ position: 'absolute', top: 4, left: 4, background: 'var(--color-primary)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 4px' }}>
-                      Principale
-                    </span>
-                  )}
-                  <div style={{ display: 'flex', gap: 4, marginTop: 4, width: '100%' }}>
-                    {idx !== 0 && (
+            {/* Aperçus */}
+            {(form.images || []).length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 10, marginTop: 12 }}>
+                {(form.images || []).map((imgUrl, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      position: 'relative',
+                      border: idx === 0 ? '2px solid var(--color-primary)' : '1px solid #e2e8f0',
+                      background: '#f8fafc',
+                      padding: 4,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <img
+                      src={imgUrl}
+                      alt={`Photo ${idx + 1}`}
+                      style={{ width: '100%', height: 75, objectFit: 'contain', background: '#fff' }}
+                    />
+                    {idx === 0 && (
+                      <span style={{ position: 'absolute', top: 4, left: 4, background: 'var(--color-primary)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 4px' }}>
+                        Principale
+                      </span>
+                    )}
+                    <div style={{ display: 'flex', gap: 4, marginTop: 4, width: '100%' }}>
+                      {idx !== 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleSetPrimaryImage(idx)}
+                          title="Définir comme principale"
+                          style={{ flex: 1, padding: '2px 0', fontSize: 10, background: '#e2e8f0', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                        >
+                          Mettre 1ère
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={() => handleSetPrimaryImage(idx)}
-                        title="Définir comme principale"
-                        style={{ flex: 1, padding: '2px 0', fontSize: 10, background: '#e2e8f0', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                        onClick={() => handleRemoveImage(idx)}
+                        title="Supprimer cette photo"
+                        style={{ padding: '2px 6px', fontSize: 10, background: '#fee2e2', color: '#dc2626', border: 'none', cursor: 'pointer' }}
                       >
-                        Mettre 1ère
+                        <Trash2 size={12} />
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(idx)}
-                      title="Supprimer cette photo"
-                      style={{ padding: '2px 6px', fontSize: 10, background: '#fee2e2', color: '#dc2626', border: 'none', cursor: 'pointer' }}
-                    >
-                      <Trash2 size={12} />
-                    </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Field>
 
           {/* SKU + Stock + Note */}
@@ -282,27 +265,12 @@ export default function EditProductModal({ product, isOpen, onClose, onSave }) {
             <Field label="SKU">
               <input value={form.sku || ''} onChange={(e) => handleChange('sku', e.target.value)} style={inputStyle} />
             </Field>
-            <Field label="Stock">
-              <input type="number" value={form.stock || ''} onChange={(e) => handleChange('stock', e.target.value)} style={inputStyle} />
+            <Field label="Stock (quantité)">
+              <input type="number" min="0" value={form.stock ?? ''} onChange={(e) => handleChange('stock', e.target.value)} style={inputStyle} placeholder="Ex: 50" />
             </Field>
             <Field label="Note (/5)" icon={<Star size={13} />}>
               <input type="number" step="0.1" min="0" max="5" value={form.rating || ''} onChange={(e) => handleChange('rating', e.target.value)} style={inputStyle} />
             </Field>
-          </div>
-
-          {/* Badges */}
-          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-            {[
-              { key: 'deal', label: '🔥 Solde actif' },
-              { key: 'bestSeller', label: '⭐ Best Seller' },
-              { key: 'prime', label: '✈️ Prime' },
-              { key: 'amazonChoice', label: '🏅 Choix du site' },
-            ].map(({ key, label }) => (
-              <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
-                <input type="checkbox" checked={!!form[key]} onChange={(e) => handleChange(key, e.target.checked)} />
-                {label}
-              </label>
-            ))}
           </div>
 
           {/* Garantie + Livraison */}
@@ -396,4 +364,20 @@ const inputStyle = {
 const textareaStyle = {
   ...inputStyle,
   resize: 'vertical',
+};
+
+const uploadZoneStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
+  padding: '20px 16px',
+  border: '2px dashed #cbd5e1',
+  background: '#f8fafc',
+  cursor: 'pointer',
+  transition: 'border-color 0.2s, background 0.2s',
+  textAlign: 'center',
+  width: '100%',
+  boxSizing: 'border-box',
 };
