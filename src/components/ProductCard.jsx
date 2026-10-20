@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Heart, Plus, Star, Check } from 'lucide-react';
+import { Heart, Check, Pencil, ShoppingCart } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function ProductCard({
   product,
@@ -7,13 +8,12 @@ export default function ProductCard({
   onAddToCart,
   isWishlisted,
   onToggleWishlist,
+  onEditProduct,
 }) {
+  const { isSuperAdmin } = useAuth();
   const [isJustAdded, setIsJustAdded] = useState(false);
 
-  const formattedPrice = new Intl.NumberFormat('fr-FR').format(product.price);
-  const formattedOldPrice = product.oldPrice ? new Intl.NumberFormat('fr-FR').format(product.oldPrice) : null;
-
-  const handleQuickAdd = (e) => {
+  const handleAdd = (e) => {
     e.stopPropagation();
     onAddToCart(product);
     setIsJustAdded(true);
@@ -36,6 +36,20 @@ export default function ProductCard({
           </span>
         )}
 
+        {/* Super Admin Edit Button */}
+        {isSuperAdmin() && (
+          <button
+            className="cc-card-edit-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditProduct(product);
+            }}
+            title="Modifier ce produit"
+          >
+            <Pencil size={13} />
+          </button>
+        )}
+
         <img src={product.image} alt={product.title} loading="lazy" />
 
         {/* Wishlist Button */}
@@ -53,39 +67,10 @@ export default function ProductCard({
             color={isWishlisted ? "#ba4444" : "#1f2026"}
           />
         </button>
-
-        {/* Quick Add Button Sliding Up on Hover */}
-        <button
-          className="cc-card-quick-add"
-          onClick={handleQuickAdd}
-          style={{
-            backgroundColor: isJustAdded ? '#108474' : 'var(--color-primary)',
-          }}
-        >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            {isJustAdded ? (
-              <>
-                <Check size={14} /> Ajouté au panier !
-              </>
-            ) : (
-              <>
-                <Plus size={14} /> Ajout Rapide
-              </>
-            )}
-          </span>
-        </button>
       </div>
 
-      {/* Product Meta */}
+      {/* Product Meta: Uniquement le Nom du Produit et le Bouton Ajouter au Panier */}
       <div className="cc-card-info">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span className="cc-card-vendor">{product.brand}</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b', fontSize: 11 }}>
-            <Star size={12} fill="#f59e0b" color="#f59e0b" />
-            <span style={{ color: '#6e7072', fontWeight: 600 }}>{product.rating}</span>
-          </div>
-        </div>
-
         <h3
           className="cc-card-title"
           onClick={() => onSelectProduct(product)}
@@ -94,20 +79,23 @@ export default function ProductCard({
           {product.title}
         </h3>
 
-        <div className="cc-card-price-row">
-          <span className={`cc-card-price ${product.deal ? 'on-sale' : ''}`}>
-            {formattedPrice} FCFA
-          </span>
-          {formattedOldPrice && (
-            <span className="cc-card-price-old">
-              {formattedOldPrice} FCFA
-            </span>
+        <button
+          className={`cc-card-add-btn ${isJustAdded ? 'added' : ''}`}
+          onClick={handleAdd}
+          title="Ajouter au panier"
+        >
+          {isJustAdded ? (
+            <>
+              <Check className="cc-card-add-icon" size={14} />
+              <span className="cc-card-add-btn-text">Ajouté !</span>
+            </>
+          ) : (
+            <>
+              <ShoppingCart className="cc-card-add-icon" size={14} />
+              <span className="cc-card-add-btn-text">Ajouter au panier</span>
+            </>
           )}
-        </div>
-
-        <div style={{ fontSize: 11, color: '#108474', fontWeight: 600, marginTop: 4 }}>
-          &bull; En stock &bull; Expédié en 24h
-        </div>
+        </button>
       </div>
     </div>
   );

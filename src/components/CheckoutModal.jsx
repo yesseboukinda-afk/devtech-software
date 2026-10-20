@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, ShieldCheck, Smartphone, CreditCard, DollarSign, Download } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function CheckoutModal({
   isOpen,
@@ -8,14 +9,33 @@ export default function CheckoutModal({
   onOrderSuccess,
   selectedLocation,
 }) {
+  const { currentUser, isLoggedIn } = useAuth();
   const [step, setStep] = useState('form');
-  const [customerName, setCustomerName] = useState('Yesse Technicien');
-  const [customerPhone, setCustomerPhone] = useState('+241 07 45 12 30');
-  const [address, setAddress] = useState('Quartier Glass, Rue des Ateliers');
+  const [customerName, setCustomerName] = useState(currentUser?.name || '');
+  const [customerPhone, setCustomerPhone] = useState(currentUser?.phone || '');
+  const [address, setAddress] = useState(
+    currentUser?.district
+      ? `Quartier ${currentUser.district}, ${currentUser.city || ''} (${currentUser.province || ''})`
+      : 'Quartier Glass, Libreville'
+  );
   const [paymentMethod, setPaymentMethod] = useState('airtel');
   const [createdOrder, setCreatedOrder] = useState(null);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (currentUser) {
+      if (currentUser.name) setCustomerName(currentUser.name);
+      if (currentUser.phone) setCustomerPhone(currentUser.phone);
+      if (currentUser.district || currentUser.city) {
+        const parts = [];
+        if (currentUser.district) parts.push(`Quartier ${currentUser.district}`);
+        if (currentUser.city) parts.push(currentUser.city);
+        if (currentUser.province) parts.push(`(${currentUser.province})`);
+        setAddress(parts.join(', '));
+      }
+    }
+  }, [currentUser]);
+
+  if (!isOpen || !isLoggedIn()) return null;
 
   const FREE_SHIPPING_THRESHOLD = 30000;
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);

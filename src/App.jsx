@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Header from './components/Header';
 import HeroBanner from './components/HeroBanner';
 import ProductCard from './components/ProductCard';
@@ -9,10 +9,16 @@ import OrdersModal from './components/OrdersModal';
 import EditorialStory from './components/EditorialStory';
 import Footer from './components/Footer';
 import Toast from './components/Toast';
+import LoginModal from './components/LoginModal';
+import EditProductModal from './components/EditProductModal';
+import { useAuth } from './context/AuthContext';
 
 import { PRODUCTS } from './data/products';
 
 export default function App() {
+  // ── Products state (éditable par le super admin) ─────────────────────────
+  const [products, setProducts] = useState(PRODUCTS);
+
   const [cartItems, setCartItems] = useState([
     { ...PRODUCTS[0], quantity: 1 }, // Station de soudage by default
   ]);
@@ -41,14 +47,28 @@ export default function App() {
   const [sortBy, setSortBy] = useState('featured');
   const [dealsOnly, setDealsOnly] = useState(false);
 
+  const { currentUser, isLoggedIn } = useAuth();
+  const [loginNotice, setLoginNotice] = useState('');
+  const [postLoginAction, setPostLoginAction] = useState(null); // 'cart' | 'checkout'
+
   // Modals
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [toast, setToast] = useState(null);
 
   const catalogRef = useRef(null);
+
+  // Si l'utilisateur se déconnecte, fermer immédiatement le panier et le paiement
+  useEffect(() => {
+    if (!isLoggedIn()) {
+      if (isCartOpen) setIsCartOpen(false);
+      if (isCheckoutOpen) setIsCheckoutOpen(false);
+    }
+  }, [currentUser]);
 
   const categoriesList = [
     "Toutes nos catégories",
@@ -59,6 +79,49 @@ export default function App() {
     "Batteries & Alimentation",
     "Connectique & Nappes",
   ];
+
+  // ── Protection d'accès au panier ──────────────────────────────────────────
+  const handleOpenCart = () => {
+    if (!isLoggedIn()) {
+      setLoginNotice('Veuillez vous connecter à votre compte pour accéder à votre panier.');
+      setPostLoginAction('cart');
+      setIsLoginOpen(true);
+      setToast({
+        title: "Connexion requise",
+        message: "Connectez-vous à votre compte pour accéder à votre panier.",
+      });
+      return;
+    }
+    setIsCartOpen(true);
+  };
+
+  // ── Protection de la finalisation du paiement ─────────────────────────────
+  const handleOpenCheckout = () => {
+    if (!isLoggedIn()) {
+      setIsCartOpen(false);
+      setLoginNotice('Veuillez vous connecter à votre compte pour finaliser votre paiement.');
+      setPostLoginAction('checkout');
+      setIsLoginOpen(true);
+      setToast({
+        title: "Connexion requise",
+        message: "Connectez-vous pour finaliser votre paiement et confirmer la commande.",
+      });
+      return;
+    }
+    setIsCartOpen(false);
+    setIsCheckoutOpen(true);
+  };
+
+  // ── Action après connexion réussie ────────────────────────────────────────
+  const handleLoginSuccess = () => {
+    if (postLoginAction === 'cart') {
+      setIsCartOpen(true);
+    } else if (postLoginAction === 'checkout') {
+      setIsCheckoutOpen(true);
+    }
+    setPostLoginAction(null);
+    setLoginNotice('');
+  };
 
   // Cart Handlers
   const handleAddToCart = (product, quantity = 1) => {
@@ -95,6 +158,17 @@ export default function App() {
 
   const handleBuyNow = (product, quantity = 1) => {
     handleAddToCart(product, quantity);
+    setSelectedProduct(null);
+    if (!isLoggedIn()) {
+      setLoginNotice('Veuillez vous connecter à votre compte pour finaliser votre commande.');
+      setPostLoginAction('checkout');
+      setIsLoginOpen(true);
+      setToast({
+        title: "Connexion requise",
+        message: "Connectez-vous pour finaliser votre commande.",
+      });
+      return;
+    }
     setIsCheckoutOpen(true);
   };
 
@@ -116,9 +190,18 @@ export default function App() {
     setCartItems([]);
   };
 
+  // Handler de sauvegarde produit (super admin)
+  const handleSaveProduct = (updatedProduct) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
+    );
+    setToast({ title: '✅ Produit mis à jour', message: updatedProduct.title });
+    setEditingProduct(null);
+  };
+
   // Filtered Products
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter((p) => {
+    return products.filter((p) => {
       if (selectedCategory !== 'Toutes nos catégories' && p.category !== selectedCategory) {
         return false;
       }
@@ -140,7 +223,7 @@ export default function App() {
       if (sortBy === 'name') return a.title.localeCompare(b.title);
       return 0; // Featured
     });
-  }, [selectedCategory, dealsOnly, searchQuery, sortBy]);
+  }, [selectedCategory, dealsOnly, searchQuery, sortBy, products]);
 
   const scrollToCatalog = () => {
     if (catalogRef.current) {
@@ -160,7 +243,7 @@ export default function App() {
       {/* 1. Crown Cap Luxury Header with DevTech Software Logo */}
       <Header
         cartCount={cartCount}
-        onOpenCart={() => setIsCartOpen(true)}
+        onOpenCart={handleOpenCart}
         onOpenOrders={() => setIsOrdersOpen(true)}
         wishlistCount={wishlist.length}
         onOpenWishlist={() => {
@@ -177,6 +260,8 @@ export default function App() {
           scrollToCatalog();
         }}
         onScrollToStory={scrollToStory}
+        onOpenLogin={() => setIsLoginOpen(true)}
+        onOpenAdmin={() => setIsOrdersOpen(true)}
       />
 
       {/* 2. Editorial Hero & Trust Bar */}
@@ -283,6 +368,7 @@ export default function App() {
                   onAddToCart={handleAddToCart}
                   isWishlisted={wishlist.some(item => item.id === product.id)}
                   onToggleWishlist={handleToggleWishlist}
+                  onEditProduct={(p) => setEditingProduct(p)}
                 />
               ))}
             </div>
@@ -312,7 +398,7 @@ export default function App() {
         cartItems={cartItems}
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveItem}
-        onCheckout={() => setIsCheckoutOpen(true)}
+        onCheckout={handleOpenCheckout}
       />
 
       <CheckoutModal
@@ -334,8 +420,28 @@ export default function App() {
         onClose={() => setToast(null)}
         onOpenCart={() => {
           setToast(null);
-          setIsCartOpen(true);
+          handleOpenCart();
         }}
+      />
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={isLoginOpen}
+        onClose={() => {
+          setIsLoginOpen(false);
+          setLoginNotice('');
+          setPostLoginAction(null);
+        }}
+        notice={loginNotice}
+        onSuccess={handleLoginSuccess}
+      />
+
+      {/* Edit Product Modal (Super Admin only) */}
+      <EditProductModal
+        product={editingProduct}
+        isOpen={!!editingProduct}
+        onClose={() => setEditingProduct(null)}
+        onSave={handleSaveProduct}
       />
     </div>
   );

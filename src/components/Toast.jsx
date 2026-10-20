@@ -28,7 +28,7 @@ export default function Toast({ toast, onClose, onOpenCart }) {
           style={{
             background: '#ffd814',
             border: '1px solid #fcd200',
-            borderRadius: 6,
+            borderRadius: 0,
             padding: '4px 8px',
             fontSize: 12,
             fontWeight: 700,

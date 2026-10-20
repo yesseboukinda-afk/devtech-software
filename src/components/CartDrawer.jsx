@@ -1,5 +1,6 @@
 import React from 'react';
-import { X, Trash2, ShoppingBag, CheckCircle } from 'lucide-react';
+import { X, Trash2, ShoppingBag, CheckCircle, Lock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function CartDrawer({
   isOpen,
@@ -9,6 +10,7 @@ export default function CartDrawer({
   onRemoveItem,
   onCheckout,
 }) {
+  const { isLoggedIn } = useAuth();
   if (!isOpen) return null;
 
   const FREE_SHIPPING_THRESHOLD = 30000;
@@ -150,19 +152,44 @@ export default function CartDrawer({
               Taxes et frais d'expédition calculés lors de l'étape de validation.
             </p>
 
+            {!isLoggedIn() && (
+              <div style={{
+                background: '#fffbeb',
+                border: '1px solid #fde68a',
+                padding: '8px 12px',
+                fontSize: 12,
+                color: '#92400e',
+                marginBottom: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <Lock size={14} style={{ flexShrink: 0 }} />
+                <span>Connectez-vous pour finaliser votre commande.</span>
+              </div>
+            )}
+
             <button
               className="cc-btn cc-btn-primary"
-              style={{ width: '100%', padding: '14px' }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
               onClick={() => {
                 onClose();
                 onCheckout();
               }}
             >
-              Finaliser la Commande
+              {!isLoggedIn() && <Lock size={15} />}
+              <span>{isLoggedIn() ? 'Finaliser la Commande' : 'Se connecter & Payer'}</span>
             </button>
           </div>
         )}
-      </div>
+      </div> 
     </>
   );
 }

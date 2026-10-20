@@ -15,15 +15,9 @@ export default function HeroBanner({ onExploreCategory, onExploreDeals }) {
         <div className="cc-hero-overlay" />
 
         <div className="cc-hero-content">
-          <span className="cc-hero-pretitle">
-            DEVTECH SOFTWARE &bull; QUALITÉ ET PRÉCISION DEPUIS 1934
-          </span>
-          <h1 className="cc-hero-title">
-            L'Excellence du Savoir-Faire & des Composants Certifiés
-          </h1>
+          <h1 className="cc-hero-title">DevTech Software</h1>
           <p className="cc-hero-desc">
-            Des stations de soudage de haute voltige aux modules microcontrôleurs les plus exigeants, 
-            découvrez une collection pensée pour les professionnels et passionnés du travail bien fait.
+            Composants certifiés &amp; équipements professionnels pour les experts du travail bien fait.
           </p>
 
           <div className="cc-hero-actions">
